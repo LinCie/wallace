@@ -1,0 +1,310 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Wallace API",
+    "version": "1.0.0",
+    "description": "Product management API. Successful JSON responses are wrapped in data; errors contain code and message. Authentication is currently disabled."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Current server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Products",
+      "description": "Create, list, retrieve, update, and soft-delete products."
+    }
+  ],
+  "paths": {
+    "/v1/products": {
+      "get": {
+        "tags": ["Products"],
+        "operationId": "listProducts",
+        "summary": "List products",
+        "description": "Returns products that have not been deleted, ordered by ID descending. Pagination returns a data array without pagination metadata.",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter by status. Omit or leave empty to include all statuses.",
+            "schema": {
+              "type": "string",
+              "enum": ["active", "inactive", ""]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Products retrieved successfully. An empty result returns an empty data array.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data"],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Product"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      },
+      "post": {
+        "tags": ["Products"],
+        "operationId": "createProduct",
+        "summary": "Create a product",
+        "description": "Creates a product. If id is omitted or null, the server generates a UUIDv7. A supplied id must be a valid UUIDv7.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateProduct" },
+              "example": {
+                "name": "Example product",
+                "slug": "example-product",
+                "status": "active"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Product created successfully.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ProductResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/v1/products/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "description": "Product UUID.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "tags": ["Products"],
+        "operationId": "getProduct",
+        "summary": "Get a product",
+        "description": "Returns a product that has not been deleted.",
+        "responses": {
+          "200": {
+            "description": "Product retrieved successfully.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ProductResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/ProductNotFound" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      },
+      "put": {
+        "tags": ["Products"],
+        "operationId": "updateProduct",
+        "summary": "Update a product",
+        "description": "Replaces the product's name, slug, and status. All three fields are required.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateProduct" },
+              "example": {
+                "name": "Updated product",
+                "slug": "updated-product",
+                "status": "inactive"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Product updated successfully.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ProductResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/ProductNotFound" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      },
+      "delete": {
+        "tags": ["Products"],
+        "operationId": "deleteProduct",
+        "summary": "Delete a product",
+        "description": "Soft-deletes the product. Deleted products are excluded from retrieval and listing.",
+        "responses": {
+          "204": {
+            "description": "Product deleted successfully. No response body."
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/ProductNotFound" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ProductStatus": {
+        "type": "string",
+        "enum": ["active", "inactive"]
+      },
+      "UpdateProduct": {
+        "type": "object",
+        "required": ["name", "slug", "status"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "slug": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": { "$ref": "#/components/schemas/ProductStatus" }
+        }
+      },
+      "CreateProduct": {
+        "allOf": [
+          { "$ref": "#/components/schemas/UpdateProduct" },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": ["string", "null"],
+                "format": "uuid",
+                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[89aAbB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+                "description": "Optional UUIDv7. Omit or set to null for server generation."
+              }
+            }
+          }
+        ]
+      },
+      "Product": {
+        "type": "object",
+        "required": ["id", "name", "slug", "status", "created_at", "updated_at", "deleted_at"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": { "type": "string" },
+          "slug": { "type": "string" },
+          "status": { "$ref": "#/components/schemas/ProductStatus" },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deleted_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          }
+        }
+      },
+      "ProductResponse": {
+        "type": "object",
+        "required": ["data"],
+        "properties": {
+          "data": { "$ref": "#/components/schemas/Product" }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "required": ["code", "message"],
+        "properties": {
+          "code": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Invalid request body, query parameters, or product ID.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": {
+              "code": "BAD_REQUEST",
+              "message": "status must be one of [active inactive]"
+            }
+          }
+        }
+      },
+      "ProductNotFound": {
+        "description": "The product does not exist or has been deleted.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": {
+              "code": "NOT_FOUND",
+              "message": "product not found"
+            }
+          }
+        }
+      },
+      "InternalServerError": {
+        "description": "An internal error occurred while processing the request.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": {
+              "code": "INTERNAL_SERVER_ERROR",
+              "message": "failed to get product"
+            }
+          }
+        }
+      }
+    }
+  }
+}
