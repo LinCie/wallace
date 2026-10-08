@@ -28,7 +28,7 @@ func main() {
 		Handler: router.NewRouter(db, cfg),
 	}
 
-	log.Printf("server listening on %s", server.Addr)
+	log.Printf("Wallace's Server listening on %s", server.Addr)
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatal(err)
 	}

@@ -17,8 +17,8 @@ func NewRouter(db *sqlx.DB, cfg config.Config) http.Handler {
 	r := chi.NewRouter()
 
 	r.Use(chimiddleware.StripSlashes)
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recovery)
+	r.Use(chimiddleware.Logger)
+	r.Use(chimiddleware.Recoverer)
 	r.Use(middleware.WithCORS(cfg))
 
 	r.Get("/docs", docs.Scalar)
