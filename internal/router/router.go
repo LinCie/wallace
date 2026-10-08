@@ -3,31 +3,19 @@ package router
 import (
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/jmoiron/sqlx"
 
 	"wallace/internal/config"
-	"wallace/internal/httpx"
 	"wallace/internal/middleware"
 )
 
-type Router struct {
-	mux *http.ServeMux
-	cfg config.Config
-}
+func NewRouter(db *sqlx.DB, cfg config.Config) http.Handler {
+	r := chi.NewRouter()
 
-func NewRouter(db *sqlx.DB, cfg config.Config) Router {
-	mux := http.NewServeMux()
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recovery)
+	r.Use(middleware.WithCORS(cfg))
 
-	return Router{
-		mux: mux,
-		cfg: cfg,
-	}
-}
-
-func (r Router) Handler() http.Handler {
-	return httpx.NewChain(
-		middleware.Logger,
-		middleware.Recovery,
-		middleware.WithCORS(r.cfg),
-	).Then(r.mux)
+	return r
 }

@@ -25,7 +25,7 @@ func main() {
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", cfg.Port),
-		Handler: router.NewRouter(db, cfg).Handler(),
+		Handler: router.NewRouter(db, cfg),
 	}
 
 	log.Printf("server listening on %s", server.Addr)
