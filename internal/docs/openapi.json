@@ -3,7 +3,7 @@
   "info": {
     "title": "Wallace API",
     "version": "1.0.0",
-    "description": "Product management API. Successful JSON responses are wrapped in data; errors contain code and message. Authentication is currently disabled."
+    "description": "Product management and authentication API. Successful JSON responses are wrapped in data; errors contain code and message."
   },
   "servers": [
     {
@@ -15,9 +15,144 @@
     {
       "name": "Products",
       "description": "Create, list, retrieve, update, and soft-delete products."
+    },
+    {
+      "name": "Auth",
+      "description": "Register users, authenticate, and manage refresh-token sessions."
     }
   ],
   "paths": {
+    "/v1/auth/register": {
+      "post": {
+        "tags": ["Auth"],
+        "operationId": "register",
+        "summary": "Register a user",
+        "description": "Creates a user and returns their ID, name, and email. No tokens or cookies are issued; log in separately to authenticate.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RegisterRequest" },
+              "example": {
+                "name": "Jane Doe",
+                "email": "jane@example.com",
+                "password": "correct-horse-battery-staple"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User registered successfully.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UserResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/AuthBadRequest" },
+          "409": {
+            "description": "A user with this email already exists.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": {
+                  "code": "EMAIL_ALREADY_EXISTS",
+                  "message": "user email already exists"
+                }
+              }
+            }
+          },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/v1/auth/login": {
+      "post": {
+        "tags": ["Auth"],
+        "operationId": "login",
+        "summary": "Log in",
+        "description": "Authenticates a user and issues access and refresh tokens. The refresh token is set in an HttpOnly cookie; the response body contains only the access token.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LoginRequest" },
+              "example": {
+                "email": "jane@example.com",
+                "password": "correct-horse-battery-staple"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful and tokens issued.",
+            "headers": {
+              "Set-Cookie": {
+                "description": "HttpOnly refresh token cookie scoped to /v1/auth; SameSite=Lax and Secure according to server configuration.",
+                "schema": { "type": "string" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TokenResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/AuthBadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/v1/auth/refresh": {
+      "post": {
+        "tags": ["Auth"],
+        "operationId": "refreshTokens",
+        "summary": "Refresh tokens",
+        "description": "Rotates the refresh token and issues a new access token. The refresh token is read from and replaced in the HttpOnly cookie.",
+        "security": [{ "RefreshTokenCookie": [] }],
+        "responses": {
+          "200": {
+            "description": "Tokens refreshed successfully.",
+            "headers": {
+              "Set-Cookie": {
+                "description": "Replacement HttpOnly refresh token cookie scoped to /v1/auth; SameSite=Lax and Secure according to server configuration.",
+                "schema": { "type": "string" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TokenResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
+    "/v1/auth/logout": {
+      "post": {
+        "tags": ["Auth"],
+        "operationId": "logout",
+        "summary": "Log out",
+        "description": "Invalidates the refresh-token session if a refresh_token cookie is present, then clears the cookie. Calling without the cookie is also successful.",
+        "responses": {
+          "204": {
+            "description": "Logged out successfully. No response body.",
+            "headers": {
+              "Set-Cookie": {
+                "description": "Expired refresh_token cookie scoped to /v1/auth.",
+                "schema": { "type": "string" }
+              }
+            }
+          },
+          "500": { "$ref": "#/components/responses/InternalServerError" }
+        }
+      }
+    },
     "/v1/products": {
       "get": {
         "tags": ["Products"],
@@ -192,6 +327,55 @@
   },
   "components": {
     "schemas": {
+      "RegisterRequest": {
+        "type": "object",
+        "required": ["name", "email", "password"],
+        "properties": {
+          "name": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string" }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string" }
+        }
+      },
+      "User": {
+        "type": "object",
+        "required": ["id", "name", "email"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "email": { "type": "string", "format": "email" }
+        }
+      },
+      "UserResponse": {
+        "type": "object",
+        "required": ["data"],
+        "properties": {
+          "data": { "$ref": "#/components/schemas/User" }
+        }
+      },
+      "Token": {
+        "type": "object",
+        "required": ["access_token", "token_type", "expires_in"],
+        "properties": {
+          "access_token": { "type": "string" },
+          "token_type": { "type": "string", "const": "Bearer" },
+          "expires_in": { "type": "integer", "format": "int64", "description": "Access token lifetime in seconds." }
+        }
+      },
+      "TokenResponse": {
+        "type": "object",
+        "required": ["data"],
+        "properties": {
+          "data": { "$ref": "#/components/schemas/Token" }
+        }
+      },
       "ProductStatus": {
         "type": "string",
         "enum": ["active", "inactive"]
@@ -269,6 +453,30 @@
       }
     },
     "responses": {
+      "AuthBadRequest": {
+        "description": "The authentication request body is missing, malformed, or invalid.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": {
+              "code": "BAD_REQUEST",
+              "message": "email is invalid"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "The credentials are invalid or the refresh token is missing, invalid, or expired.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": {
+              "code": "UNAUTHORIZED",
+              "message": "invalid email and/or password"
+            }
+          }
+        }
+      },
       "BadRequest": {
         "description": "Invalid request body, query parameters, or product ID.",
         "content": {
@@ -304,6 +512,14 @@
             }
           }
         }
+      }
+    },
+    "securitySchemes": {
+      "RefreshTokenCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "refresh_token",
+        "description": "HttpOnly refresh token cookie scoped to /v1/auth."
       }
     }
   }

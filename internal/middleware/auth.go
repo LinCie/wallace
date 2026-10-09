@@ -8,16 +8,15 @@ import (
 	"wallace/internal/config"
 	"wallace/internal/httpx"
 	"wallace/internal/jwt"
+
+	"github.com/gofrs/uuid/v5"
 )
 
 type contextKey string
 
-const (
-	userIDKey contextKey = "user_id"
-	roleKey   contextKey = "role"
-)
+const userIDKey contextKey = "user_id"
 
-// WithAuth validates the bearer token and stores the user ID and role in the
+// WithAuth validates the bearer token and stores the UUID user ID in the
 // request context.
 func WithAuth(cfg config.Config) httpx.Constructor {
 	return func(next http.Handler) http.Handler {
@@ -35,7 +34,12 @@ func WithAuth(cfg config.Config) httpx.Constructor {
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), userIDKey, claims.Subject)
+			userID, err := uuid.FromString(claims.Subject)
+			if err != nil || userID == uuid.Nil {
+				httpx.RespondError(w, http.StatusUnauthorized, "UNAUTHORIZED", "invalid token subject")
+				return
+			}
+			ctx := context.WithValue(r.Context(), userIDKey, userID)
 
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
@@ -43,13 +47,7 @@ func WithAuth(cfg config.Config) httpx.Constructor {
 }
 
 // UserIDFromContext returns the authenticated user ID set by WithAuth.
-func UserIDFromContext(ctx context.Context) (int64, bool) {
-	userID, ok := ctx.Value(userIDKey).(int64)
+func UserIDFromContext(ctx context.Context) (uuid.UUID, bool) {
+	userID, ok := ctx.Value(userIDKey).(uuid.UUID)
 	return userID, ok
-}
-
-// RoleFromContext returns the authenticated user role set by WithAuth.
-func RoleFromContext(ctx context.Context) (string, bool) {
-	role, ok := ctx.Value(roleKey).(string)
-	return role, ok
 }

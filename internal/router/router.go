@@ -10,7 +10,9 @@ import (
 	"wallace/internal/config"
 	"wallace/internal/docs"
 	"wallace/internal/middleware"
+	"wallace/internal/modules/auth"
 	"wallace/internal/modules/products"
+	"wallace/internal/modules/users"
 )
 
 func NewRouter(db *sqlx.DB, cfg config.Config) http.Handler {
@@ -24,10 +26,19 @@ func NewRouter(db *sqlx.DB, cfg config.Config) http.Handler {
 	r.Get("/docs", docs.Scalar)
 	r.Get("/openapi.json", docs.OpenAPI)
 
+	usersModule := users.NewModule(db)
+	authModule := auth.NewModule(usersModule.Service, auth.NewMemoryRefreshStore(), cfg)
 	productsModule := products.NewModule(db)
 
 	r.Route("/v1", func(r chi.Router) {
 		// r.Use(middleware.WithAuth(cfg))
+
+		r.Route("/auth", func(r chi.Router) {
+			r.Post("/register", authModule.Handler.Register)
+			r.Post("/login", authModule.Handler.Login)
+			r.Post("/refresh", authModule.Handler.Refresh)
+			r.Post("/logout", authModule.Handler.Logout)
+		})
 
 		r.Route("/products", func(r chi.Router) {
 			r.Post("/", productsModule.Handler.Create)
