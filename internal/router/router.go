@@ -31,8 +31,6 @@ func NewRouter(db *sqlx.DB, cfg config.Config) http.Handler {
 	productsModule := products.NewModule(db)
 
 	r.Route("/v1", func(r chi.Router) {
-		// r.Use(middleware.WithAuth(cfg))
-
 		r.Route("/auth", func(r chi.Router) {
 			r.Post("/register", authModule.Handler.Register)
 			r.Post("/login", authModule.Handler.Login)
@@ -40,12 +38,16 @@ func NewRouter(db *sqlx.DB, cfg config.Config) http.Handler {
 			r.Post("/logout", authModule.Handler.Logout)
 		})
 
-		r.Route("/products", func(r chi.Router) {
-			r.Post("/", productsModule.Handler.Create)
-			r.Get("/", productsModule.Handler.GetAll)
-			r.Get("/{id}", productsModule.Handler.Get)
-			r.Put("/{id}", productsModule.Handler.Update)
-			r.Delete("/{id}", productsModule.Handler.Delete)
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.WithAuth(cfg))
+
+			r.Route("/products", func(r chi.Router) {
+				r.Post("/", productsModule.Handler.Create)
+				r.Get("/", productsModule.Handler.GetAll)
+				r.Get("/{id}", productsModule.Handler.Get)
+				r.Put("/{id}", productsModule.Handler.Update)
+				r.Delete("/{id}", productsModule.Handler.Delete)
+			})
 		})
 	})
 
