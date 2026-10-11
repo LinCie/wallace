@@ -34,7 +34,7 @@ func NewConfig() (Config, error) {
 
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
-		jwtSecret = "dev-secret-change-me"
+		return Config{}, errors.New("JWT_SECRET is required")
 	}
 	minutes := 5
 	if v := os.Getenv("JWT_EXPIRES_MINUTES"); v != "" {
