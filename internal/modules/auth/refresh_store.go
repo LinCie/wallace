@@ -17,7 +17,6 @@ type RefreshSession struct {
 type RefreshStore interface {
 	Create(ctx context.Context, hash string, session RefreshSession) error
 	Get(ctx context.Context, hash string) (RefreshSession, error)
-	// Rotate atomically replaces a valid old token, preserving its user ID.
 	Rotate(ctx context.Context, oldHash, newHash string, expiresAt time.Time) error
 	Delete(ctx context.Context, hash string) error
 }

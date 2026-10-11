@@ -7,11 +7,14 @@ type Module struct {
 	Handler *Handler
 }
 
-func NewModule(users UsersService, refresh RefreshStore, cfg config.Config) *Module {
-	service := NewService(users, NewArgon2idHasher(), refresh, cfg)
+func NewModule(users UsersService, cfg config.Config) *Module {
+	refresh := NewMemoryRefreshStore()
+	hasher := NewArgon2idHasher()
+	service := NewService(users, hasher, refresh, cfg)
+	handler := NewHandler(service, cfg)
 
 	return &Module{
 		Service: service,
-		Handler: NewHandler(service, cfg),
+		Handler: handler,
 	}
 }

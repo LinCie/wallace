@@ -27,7 +27,7 @@ func NewRouter(db *sqlx.DB, cfg config.Config) http.Handler {
 	r.Get("/openapi.json", docs.OpenAPI)
 
 	usersModule := users.NewModule(db)
-	authModule := auth.NewModule(usersModule.Service, auth.NewMemoryRefreshStore(), cfg)
+	authModule := auth.NewModule(usersModule.Service, cfg)
 	productsModule := products.NewModule(db)
 
 	r.Route("/v1", func(r chi.Router) {
