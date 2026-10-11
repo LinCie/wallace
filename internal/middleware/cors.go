@@ -16,7 +16,7 @@ func WithCORS(cfg config.Config) httpx.Constructor {
 			header.Set("Access-Control-Allow-Origin", cfg.CORSAllowedOrigin)
 			header.Set("Access-Control-Allow-Credentials", "true")
 			header.Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-			header.Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
+			header.Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Organization-ID")
 			header.Add("Vary", "Origin")
 
 			if r.Method == http.MethodOptions {

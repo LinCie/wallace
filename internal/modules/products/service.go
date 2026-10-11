@@ -8,10 +8,10 @@ import (
 
 type Repository interface {
 	Create(ctx context.Context, product *Product) (*Product, error)
-	Get(ctx context.Context, id uuid.UUID) (*Product, error)
-	GetAll(ctx context.Context, status ProductStatus, limit, offset int) ([]Product, error)
-	Update(ctx context.Context, product *Product) (*Product, error)
-	Delete(ctx context.Context, id uuid.UUID) error
+	Get(ctx context.Context, organizationID, id uuid.UUID) (*Product, error)
+	GetAll(ctx context.Context, organizationID uuid.UUID, status ProductStatus, limit, offset int) ([]Product, error)
+	Update(ctx context.Context, organizationID uuid.UUID, product *Product) (*Product, error)
+	Delete(ctx context.Context, organizationID, id uuid.UUID) error
 }
 
 type service struct {
@@ -28,11 +28,11 @@ func (s *service) Create(ctx context.Context, product *Product) (*Product, error
 	return s.repo.Create(ctx, product)
 }
 
-func (s *service) Get(ctx context.Context, id uuid.UUID) (*Product, error) {
-	return s.repo.Get(ctx, id)
+func (s *service) Get(ctx context.Context, organizationID, id uuid.UUID) (*Product, error) {
+	return s.repo.Get(ctx, organizationID, id)
 }
 
-func (s *service) GetAll(ctx context.Context, status ProductStatus, limit, page int) ([]Product, error) {
+func (s *service) GetAll(ctx context.Context, organizationID uuid.UUID, status ProductStatus, limit, page int) ([]Product, error) {
 	if limit < 1 || limit > 100 {
 		return nil, ErrInvalidLimitRange
 	}
@@ -41,13 +41,13 @@ func (s *service) GetAll(ctx context.Context, status ProductStatus, limit, page 
 	}
 
 	offset := (page - 1) * limit
-	return s.repo.GetAll(ctx, status, limit, offset)
+	return s.repo.GetAll(ctx, organizationID, status, limit, offset)
 }
 
-func (s *service) Update(ctx context.Context, product *Product) (*Product, error) {
-	return s.repo.Update(ctx, product)
+func (s *service) Update(ctx context.Context, organizationID uuid.UUID, product *Product) (*Product, error) {
+	return s.repo.Update(ctx, organizationID, product)
 }
 
-func (s *service) Delete(ctx context.Context, id uuid.UUID) error {
-	return s.repo.Delete(ctx, id)
+func (s *service) Delete(ctx context.Context, organizationID, id uuid.UUID) error {
+	return s.repo.Delete(ctx, organizationID, id)
 }

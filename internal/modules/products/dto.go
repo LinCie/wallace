@@ -26,11 +26,12 @@ type GetAllQuery struct {
 }
 
 type ProductResponse struct {
-	ID        uuid.UUID     `json:"id"`
-	Name      string        `json:"name"`
-	Slug      string        `json:"slug"`
-	Status    ProductStatus `json:"status"`
-	CreatedAt time.Time     `json:"created_at"`
-	UpdatedAt time.Time     `json:"updated_at"`
-	DeleteAt  *time.Time    `json:"deleted_at"`
+	ID             uuid.UUID     `json:"id"`
+	OrganizationID uuid.UUID     `json:"organization_id"`
+	Name           string        `json:"name"`
+	Slug           string        `json:"slug"`
+	Status         ProductStatus `json:"status"`
+	CreatedAt      time.Time     `json:"created_at"`
+	UpdatedAt      time.Time     `json:"updated_at"`
+	DeleteAt       *time.Time    `json:"deleted_at"`
 }

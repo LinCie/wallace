@@ -14,11 +14,12 @@ const (
 )
 
 type Product struct {
-	ID        uuid.UUID     `db:"id"`
-	Name      string        `db:"name"`
-	Slug      string        `db:"slug"`
-	Status    ProductStatus `db:"status"`
-	CreatedAt time.Time     `db:"created_at"`
-	UpdatedAt time.Time     `db:"updated_at"`
-	DeleteAt  *time.Time    `db:"deleted_at"`
+	ID             uuid.UUID     `db:"id"`
+	OrganizationID uuid.UUID     `db:"organization_id"`
+	Name           string        `db:"name"`
+	Slug           string        `db:"slug"`
+	Status         ProductStatus `db:"status"`
+	CreatedAt      time.Time     `db:"created_at"`
+	UpdatedAt      time.Time     `db:"updated_at"`
+	DeleteAt       *time.Time    `db:"deleted_at"`
 }

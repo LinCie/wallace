@@ -9,14 +9,15 @@ import (
 	"github.com/gofrs/uuid/v5"
 
 	"wallace/internal/httpx"
+	"wallace/internal/middleware"
 )
 
 type Service interface {
 	Create(ctx context.Context, product *Product) (*Product, error)
-	Get(ctx context.Context, id uuid.UUID) (*Product, error)
-	GetAll(ctx context.Context, status ProductStatus, limit, page int) ([]Product, error)
-	Update(ctx context.Context, product *Product) (*Product, error)
-	Delete(ctx context.Context, id uuid.UUID) error
+	Get(ctx context.Context, organizationID, id uuid.UUID) (*Product, error)
+	GetAll(ctx context.Context, organizationID uuid.UUID, status ProductStatus, limit, page int) ([]Product, error)
+	Update(ctx context.Context, organizationID uuid.UUID, product *Product) (*Product, error)
+	Delete(ctx context.Context, organizationID, id uuid.UUID) error
 }
 
 type Handler struct {
@@ -24,12 +25,15 @@ type Handler struct {
 }
 
 func NewHandler(service Service) *Handler {
-	return &Handler{
-		service: service,
-	}
+	return &Handler{service: service}
 }
 
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
+	organizationID, ok := organizationIDFromContext(w, r)
+	if !ok {
+		return
+	}
+
 	var body CreateRequest
 	if err := httpx.BindBody(r, &body); err != nil {
 		httpx.RespondError(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
@@ -46,16 +50,16 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	product, err := h.service.Create(r.Context(), &Product{
-		ID:     id,
-		Name:   body.Name,
-		Slug:   body.Slug,
-		Status: body.Status,
+		ID:             id,
+		OrganizationID: organizationID,
+		Name:           body.Name,
+		Slug:           body.Slug,
+		Status:         body.Status,
 	})
 	if err != nil {
 		httpx.RespondError(w, http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", err.Error())
 		return
 	}
-
 	httpx.RespondJSON(w, http.StatusCreated, ProductResponse(*product))
 }
 
@@ -65,8 +69,12 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		httpx.RespondError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid product ID")
 		return
 	}
+	organizationID, ok := organizationIDFromContext(w, r)
+	if !ok {
+		return
+	}
 
-	product, err := h.service.Get(r.Context(), id)
+	product, err := h.service.Get(r.Context(), organizationID, id)
 	if errors.Is(err, ErrProductNotFound) {
 		httpx.RespondError(w, http.StatusNotFound, "NOT_FOUND", err.Error())
 		return
@@ -75,11 +83,15 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		httpx.RespondError(w, http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", err.Error())
 		return
 	}
-
 	httpx.RespondJSON(w, http.StatusOK, ProductResponse(*product))
 }
 
 func (h *Handler) GetAll(w http.ResponseWriter, r *http.Request) {
+	organizationID, ok := organizationIDFromContext(w, r)
+	if !ok {
+		return
+	}
+
 	page, limit := 1, 20
 	query := GetAllQuery{Page: &page, Limit: &limit}
 	if err := httpx.BindQuery(r, &query); err != nil {
@@ -87,7 +99,7 @@ func (h *Handler) GetAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	products, err := h.service.GetAll(r.Context(), query.Status, *query.Limit, *query.Page)
+	products, err := h.service.GetAll(r.Context(), organizationID, query.Status, *query.Limit, *query.Page)
 	if err != nil {
 		httpx.RespondError(w, http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", err.Error())
 		return
@@ -97,7 +109,6 @@ func (h *Handler) GetAll(w http.ResponseWriter, r *http.Request) {
 	for i, product := range products {
 		response[i] = ProductResponse(product)
 	}
-
 	httpx.RespondJSON(w, http.StatusOK, response)
 }
 
@@ -107,6 +118,10 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		httpx.RespondError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid product ID")
 		return
 	}
+	organizationID, ok := organizationIDFromContext(w, r)
+	if !ok {
+		return
+	}
 
 	var body UpdateRequest
 	if err := httpx.BindBody(r, &body); err != nil {
@@ -114,7 +129,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	product, err := h.service.Update(r.Context(), &Product{
+	product, err := h.service.Update(r.Context(), organizationID, &Product{
 		ID:     id,
 		Name:   body.Name,
 		Slug:   body.Slug,
@@ -128,7 +143,6 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		httpx.RespondError(w, http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", err.Error())
 		return
 	}
-
 	httpx.RespondJSON(w, http.StatusOK, ProductResponse(*product))
 }
 
@@ -138,8 +152,12 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 		httpx.RespondError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid product ID")
 		return
 	}
+	organizationID, ok := organizationIDFromContext(w, r)
+	if !ok {
+		return
+	}
 
-	err = h.service.Delete(r.Context(), id)
+	err = h.service.Delete(r.Context(), organizationID, id)
 	if errors.Is(err, ErrProductNotFound) {
 		httpx.RespondError(w, http.StatusNotFound, "NOT_FOUND", err.Error())
 		return
@@ -148,6 +166,14 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 		httpx.RespondError(w, http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", err.Error())
 		return
 	}
-
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func organizationIDFromContext(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
+	organizationID, ok := middleware.OrganizationIDFromContext(r.Context())
+	if !ok {
+		httpx.RespondError(w, http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", "organization context missing")
+		return uuid.Nil, false
+	}
+	return organizationID, true
 }

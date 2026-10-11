@@ -3,23 +3,16 @@
   "info": {
     "title": "Wallace API",
     "version": "1.0.0",
-    "description": "Product management and authentication API. Successful JSON responses are wrapped in data; errors contain code and message."
+    "description": "Organization-scoped product management and authentication API. Successful JSON responses are wrapped in data; errors contain code and message."
   },
-  "servers": [
-    {
-      "url": "/",
-      "description": "Current server"
-    }
-  ],
+  "servers": [{"url": "/", "description": "Current server"}],
   "tags": [
     {
-      "name": "Products",
-      "description": "Create, list, retrieve, update, and soft-delete products."
+      "name": "Organizations",
+      "description": "Create and list organizations, and retrieve organizations the user belongs to."
     },
-    {
-      "name": "Auth",
-      "description": "Register users, authenticate, and manage refresh-token sessions."
-    }
+    {"name": "Products", "description": "Create, list, retrieve, update, and soft-delete products."},
+    {"name": "Auth", "description": "Register users, authenticate, and manage refresh-token sessions."}
   ],
   "paths": {
     "/v1/auth/register": {
@@ -32,38 +25,27 @@
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/RegisterRequest" },
-              "example": {
-                "name": "Jane Doe",
-                "email": "jane@example.com",
-                "password": "correct-horse-battery-staple"
-              }
+              "schema": {"$ref": "#/components/schemas/RegisterRequest"},
+              "example": {"name": "Jane Doe", "email": "jane@example.com", "password": "correct-horse-battery-staple"}
             }
           }
         },
         "responses": {
           "201": {
             "description": "User registered successfully.",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/UserResponse" }
-              }
-            }
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/UserResponse"}}}
           },
-          "400": { "$ref": "#/components/responses/AuthBadRequest" },
+          "400": {"$ref": "#/components/responses/AuthBadRequest"},
           "409": {
             "description": "A user with this email already exists.",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" },
-                "example": {
-                  "code": "EMAIL_ALREADY_EXISTS",
-                  "message": "user email already exists"
-                }
+                "schema": {"$ref": "#/components/schemas/Error"},
+                "example": {"code": "EMAIL_ALREADY_EXISTS", "message": "user email already exists"}
               }
             }
           },
-          "500": { "$ref": "#/components/responses/InternalServerError" }
+          "500": {"$ref": "#/components/responses/InternalServerError"}
         }
       }
     },
@@ -77,11 +59,8 @@
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/LoginRequest" },
-              "example": {
-                "email": "jane@example.com",
-                "password": "correct-horse-battery-staple"
-              }
+              "schema": {"$ref": "#/components/schemas/LoginRequest"},
+              "example": {"email": "jane@example.com", "password": "correct-horse-battery-staple"}
             }
           }
         },
@@ -91,18 +70,14 @@
             "headers": {
               "Set-Cookie": {
                 "description": "HttpOnly refresh token cookie scoped to /v1/auth; SameSite=Lax and Secure according to server configuration.",
-                "schema": { "type": "string" }
+                "schema": {"type": "string"}
               }
             },
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/TokenResponse" }
-              }
-            }
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/TokenResponse"}}}
           },
-          "400": { "$ref": "#/components/responses/AuthBadRequest" },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "500": { "$ref": "#/components/responses/InternalServerError" }
+          "400": {"$ref": "#/components/responses/AuthBadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "500": {"$ref": "#/components/responses/InternalServerError"}
         }
       }
     },
@@ -112,24 +87,20 @@
         "operationId": "refreshTokens",
         "summary": "Refresh tokens",
         "description": "Rotates the refresh token and issues a new access token. The refresh token is read from and replaced in the HttpOnly cookie.",
-        "security": [{ "RefreshTokenCookie": [] }],
+        "security": [{"RefreshTokenCookie": []}],
         "responses": {
           "200": {
             "description": "Tokens refreshed successfully.",
             "headers": {
               "Set-Cookie": {
                 "description": "Replacement HttpOnly refresh token cookie scoped to /v1/auth; SameSite=Lax and Secure according to server configuration.",
-                "schema": { "type": "string" }
+                "schema": {"type": "string"}
               }
             },
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/TokenResponse" }
-              }
-            }
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/TokenResponse"}}}
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "500": { "$ref": "#/components/responses/InternalServerError" }
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "500": {"$ref": "#/components/responses/InternalServerError"}
         }
       }
     },
@@ -143,50 +114,116 @@
           "204": {
             "description": "Logged out successfully. No response body.",
             "headers": {
-              "Set-Cookie": {
-                "description": "Expired refresh_token cookie scoped to /v1/auth.",
-                "schema": { "type": "string" }
-              }
+              "Set-Cookie": {"description": "Expired refresh_token cookie scoped to /v1/auth.", "schema": {"type": "string"}}
             }
           },
-          "500": { "$ref": "#/components/responses/InternalServerError" }
+          "500": {"$ref": "#/components/responses/InternalServerError"}
+        }
+      }
+    },
+    "/v1/organizations": {
+      "get": {
+        "tags": ["Organizations"],
+        "operationId": "listOrganizations",
+        "summary": "List organizations",
+        "description": "Lists organizations the authenticated user belongs to.",
+        "security": [{"BearerAuth": []}],
+        "parameters": [
+          {"name": "page", "in": "query", "schema": {"type": "integer", "minimum": 1, "default": 1}},
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {"type": "integer", "minimum": 1, "maximum": 100, "default": 20}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Organizations retrieved successfully.",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/OrganizationListResponse"}}}
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "500": {"$ref": "#/components/responses/InternalServerError"},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      },
+      "post": {
+        "tags": ["Organizations"],
+        "operationId": "createOrganization",
+        "summary": "Create an organization",
+        "description": "Creates an organization and makes the authenticated user its owner.",
+        "security": [{"BearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {"schema": {"$ref": "#/components/schemas/CreateOrganization"}, "example": {"name": "Acme"}}
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Organization created successfully.",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/OrganizationResponse"}}}
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "500": {"$ref": "#/components/responses/InternalServerError"},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/v1/organizations/{organizationID}": {
+      "parameters": [
+        {
+          "name": "organizationID",
+          "in": "path",
+          "required": true,
+          "description": "Organization UUID.",
+          "schema": {"type": "string", "format": "uuid"}
+        }
+      ],
+      "get": {
+        "tags": ["Organizations"],
+        "operationId": "getOrganization",
+        "summary": "Get an organization",
+        "description": "Returns an organization only if the authenticated user is a member.",
+        "security": [{"BearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Organization retrieved successfully.",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/OrganizationResponse"}}}
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "404": {"$ref": "#/components/responses/OrganizationNotFound"},
+          "500": {"$ref": "#/components/responses/InternalServerError"},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
         }
       }
     },
     "/v1/products": {
+      "parameters": [
+        {
+          "name": "X-Organization-ID",
+          "in": "header",
+          "required": true,
+          "description": "Organization UUID. The authenticated user must be a member.",
+          "schema": {"type": "string", "format": "uuid"}
+        }
+      ],
       "get": {
         "tags": ["Products"],
         "operationId": "listProducts",
         "summary": "List products",
-        "description": "Returns products that have not been deleted, ordered by ID descending. Pagination returns a data array without pagination metadata.",
+        "description": "Returns products that have not been deleted, ordered by ID descending. Pagination returns a data array without pagination metadata. The caller must be a member of the organization identified by the X-Organization-ID header.",
         "parameters": [
           {
             "name": "status",
             "in": "query",
             "description": "Filter by status. Omit or leave empty to include all statuses.",
-            "schema": {
-              "type": "string",
-              "enum": ["active", "inactive", ""]
-            }
+            "schema": {"type": "string", "enum": ["active", "inactive", ""]}
           },
-          {
-            "name": "page",
-            "in": "query",
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "default": 1
-            }
-          },
+          {"name": "page", "in": "query", "schema": {"type": "integer", "minimum": 1, "default": 1}},
           {
             "name": "limit",
             "in": "query",
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100,
-              "default": 20
-            }
+            "schema": {"type": "integer", "minimum": 1, "maximum": 100, "default": 20}
           }
         ],
         "responses": {
@@ -197,131 +234,116 @@
                 "schema": {
                   "type": "object",
                   "required": ["data"],
-                  "properties": {
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/Product"
-                      }
-                    }
-                  }
+                  "properties": {"data": {"type": "array", "items": {"$ref": "#/components/schemas/Product"}}}
                 }
               }
             }
           },
-          "400": { "$ref": "#/components/responses/BadRequest" },
-          "500": { "$ref": "#/components/responses/InternalServerError" }
-        }
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "500": {"$ref": "#/components/responses/InternalServerError"},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        },
+        "security": [{"BearerAuth": []}]
       },
       "post": {
         "tags": ["Products"],
         "operationId": "createProduct",
         "summary": "Create a product",
-        "description": "Creates a product. If id is omitted or null, the server generates a UUIDv7. A supplied id must be a valid UUIDv7.",
+        "description": "Creates a product. If id is omitted or null, the server generates a UUIDv7. A supplied id must be a valid UUIDv7. The caller must be a member of the organization identified by the X-Organization-ID header.",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/CreateProduct" },
-              "example": {
-                "name": "Example product",
-                "slug": "example-product",
-                "status": "active"
-              }
+              "schema": {"$ref": "#/components/schemas/CreateProduct"},
+              "example": {"name": "Example product", "slug": "example-product", "status": "active"}
             }
           }
         },
         "responses": {
           "201": {
             "description": "Product created successfully.",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/ProductResponse" }
-              }
-            }
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ProductResponse"}}}
           },
-          "400": { "$ref": "#/components/responses/BadRequest" },
-          "500": { "$ref": "#/components/responses/InternalServerError" }
-        }
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "500": {"$ref": "#/components/responses/InternalServerError"},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        },
+        "security": [{"BearerAuth": []}]
       }
     },
     "/v1/products/{id}": {
       "parameters": [
         {
+          "name": "X-Organization-ID",
+          "in": "header",
+          "required": true,
+          "description": "Organization UUID. The authenticated user must be a member.",
+          "schema": {"type": "string", "format": "uuid"}
+        },
+        {
           "name": "id",
           "in": "path",
           "required": true,
           "description": "Product UUID.",
-          "schema": {
-            "type": "string",
-            "format": "uuid"
-          }
+          "schema": {"type": "string", "format": "uuid"}
         }
       ],
       "get": {
         "tags": ["Products"],
         "operationId": "getProduct",
         "summary": "Get a product",
-        "description": "Returns a product that has not been deleted.",
+        "description": "Returns a product that has not been deleted. The caller must be a member of the organization identified by the X-Organization-ID header.",
         "responses": {
           "200": {
             "description": "Product retrieved successfully.",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/ProductResponse" }
-              }
-            }
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ProductResponse"}}}
           },
-          "400": { "$ref": "#/components/responses/BadRequest" },
-          "404": { "$ref": "#/components/responses/ProductNotFound" },
-          "500": { "$ref": "#/components/responses/InternalServerError" }
-        }
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "404": {"$ref": "#/components/responses/ProductNotFound"},
+          "500": {"$ref": "#/components/responses/InternalServerError"},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        },
+        "security": [{"BearerAuth": []}]
       },
       "put": {
         "tags": ["Products"],
         "operationId": "updateProduct",
         "summary": "Update a product",
-        "description": "Replaces the product's name, slug, and status. All three fields are required.",
+        "description": "Replaces the product's name, slug, and status. All three fields are required. The caller must be a member of the organization identified by the X-Organization-ID header.",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/UpdateProduct" },
-              "example": {
-                "name": "Updated product",
-                "slug": "updated-product",
-                "status": "inactive"
-              }
+              "schema": {"$ref": "#/components/schemas/UpdateProduct"},
+              "example": {"name": "Updated product", "slug": "updated-product", "status": "inactive"}
             }
           }
         },
         "responses": {
           "200": {
             "description": "Product updated successfully.",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/ProductResponse" }
-              }
-            }
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ProductResponse"}}}
           },
-          "400": { "$ref": "#/components/responses/BadRequest" },
-          "404": { "$ref": "#/components/responses/ProductNotFound" },
-          "500": { "$ref": "#/components/responses/InternalServerError" }
-        }
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "404": {"$ref": "#/components/responses/ProductNotFound"},
+          "500": {"$ref": "#/components/responses/InternalServerError"},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        },
+        "security": [{"BearerAuth": []}]
       },
       "delete": {
         "tags": ["Products"],
         "operationId": "deleteProduct",
         "summary": "Delete a product",
-        "description": "Soft-deletes the product. Deleted products are excluded from retrieval and listing.",
+        "description": "Soft-deletes the product. Deleted products are excluded from retrieval and listing. The caller must be a member of the organization identified by the X-Organization-ID header.",
         "responses": {
-          "204": {
-            "description": "Product deleted successfully. No response body."
-          },
-          "400": { "$ref": "#/components/responses/BadRequest" },
-          "404": { "$ref": "#/components/responses/ProductNotFound" },
-          "500": { "$ref": "#/components/responses/InternalServerError" }
-        }
+          "204": {"description": "Product deleted successfully. No response body."},
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "404": {"$ref": "#/components/responses/ProductNotFound"},
+          "500": {"$ref": "#/components/responses/InternalServerError"},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        },
+        "security": [{"BearerAuth": []}]
       }
     }
   },
@@ -331,73 +353,49 @@
         "type": "object",
         "required": ["name", "email", "password"],
         "properties": {
-          "name": { "type": "string" },
-          "email": { "type": "string", "format": "email" },
-          "password": { "type": "string" }
+          "name": {"type": "string"},
+          "email": {"type": "string", "format": "email"},
+          "password": {"type": "string"}
         }
       },
       "LoginRequest": {
         "type": "object",
         "required": ["email", "password"],
-        "properties": {
-          "email": { "type": "string", "format": "email" },
-          "password": { "type": "string" }
-        }
+        "properties": {"email": {"type": "string", "format": "email"}, "password": {"type": "string"}}
       },
       "User": {
         "type": "object",
         "required": ["id", "name", "email"],
         "properties": {
-          "id": { "type": "string", "format": "uuid" },
-          "name": { "type": "string" },
-          "email": { "type": "string", "format": "email" }
+          "id": {"type": "string", "format": "uuid"},
+          "name": {"type": "string"},
+          "email": {"type": "string", "format": "email"}
         }
       },
-      "UserResponse": {
-        "type": "object",
-        "required": ["data"],
-        "properties": {
-          "data": { "$ref": "#/components/schemas/User" }
-        }
-      },
+      "UserResponse": {"type": "object", "required": ["data"], "properties": {"data": {"$ref": "#/components/schemas/User"}}},
       "Token": {
         "type": "object",
         "required": ["access_token", "token_type", "expires_in"],
         "properties": {
-          "access_token": { "type": "string" },
-          "token_type": { "type": "string", "const": "Bearer" },
-          "expires_in": { "type": "integer", "format": "int64", "description": "Access token lifetime in seconds." }
+          "access_token": {"type": "string"},
+          "token_type": {"type": "string", "const": "Bearer"},
+          "expires_in": {"type": "integer", "format": "int64", "description": "Access token lifetime in seconds."}
         }
       },
-      "TokenResponse": {
-        "type": "object",
-        "required": ["data"],
-        "properties": {
-          "data": { "$ref": "#/components/schemas/Token" }
-        }
-      },
-      "ProductStatus": {
-        "type": "string",
-        "enum": ["active", "inactive"]
-      },
+      "TokenResponse": {"type": "object", "required": ["data"], "properties": {"data": {"$ref": "#/components/schemas/Token"}}},
+      "ProductStatus": {"type": "string", "enum": ["active", "inactive"]},
       "UpdateProduct": {
         "type": "object",
         "required": ["name", "slug", "status"],
         "properties": {
-          "name": {
-            "type": "string",
-            "minLength": 1
-          },
-          "slug": {
-            "type": "string",
-            "minLength": 1
-          },
-          "status": { "$ref": "#/components/schemas/ProductStatus" }
+          "name": {"type": "string", "minLength": 1},
+          "slug": {"type": "string", "minLength": 1},
+          "status": {"$ref": "#/components/schemas/ProductStatus"}
         }
       },
       "CreateProduct": {
         "allOf": [
-          { "$ref": "#/components/schemas/UpdateProduct" },
+          {"$ref": "#/components/schemas/UpdateProduct"},
           {
             "type": "object",
             "properties": {
@@ -413,43 +411,49 @@
       },
       "Product": {
         "type": "object",
-        "required": ["id", "name", "slug", "status", "created_at", "updated_at", "deleted_at"],
+        "required": ["id", "organization_id", "name", "slug", "status", "created_at", "updated_at", "deleted_at"],
         "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "name": { "type": "string" },
-          "slug": { "type": "string" },
-          "status": { "$ref": "#/components/schemas/ProductStatus" },
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "deleted_at": {
-            "type": ["string", "null"],
-            "format": "date-time"
-          }
+          "id": {"type": "string", "format": "uuid"},
+          "organization_id": {"type": "string", "format": "uuid"},
+          "name": {"type": "string"},
+          "slug": {"type": "string"},
+          "status": {"$ref": "#/components/schemas/ProductStatus"},
+          "created_at": {"type": "string", "format": "date-time"},
+          "updated_at": {"type": "string", "format": "date-time"},
+          "deleted_at": {"type": ["string", "null"], "format": "date-time"}
         }
       },
-      "ProductResponse": {
-        "type": "object",
-        "required": ["data"],
-        "properties": {
-          "data": { "$ref": "#/components/schemas/Product" }
-        }
-      },
+      "ProductResponse": {"type": "object", "required": ["data"], "properties": {"data": {"$ref": "#/components/schemas/Product"}}},
       "Error": {
         "type": "object",
         "required": ["code", "message"],
+        "properties": {"code": {"type": "string"}, "message": {"type": "string"}}
+      },
+      "CreateOrganization": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {"name": {"type": "string", "minLength": 1, "maxLength": 100}}
+      },
+      "Organization": {
+        "type": "object",
+        "required": ["id", "name", "role", "created_at", "updated_at"],
         "properties": {
-          "code": { "type": "string" },
-          "message": { "type": "string" }
+          "id": {"type": "string", "format": "uuid"},
+          "name": {"type": "string"},
+          "role": {"type": "string", "enum": ["owner", "member"]},
+          "created_at": {"type": "string", "format": "date-time"},
+          "updated_at": {"type": "string", "format": "date-time"}
         }
+      },
+      "OrganizationResponse": {
+        "type": "object",
+        "required": ["data"],
+        "properties": {"data": {"$ref": "#/components/schemas/Organization"}}
+      },
+      "OrganizationListResponse": {
+        "type": "object",
+        "required": ["data"],
+        "properties": {"data": {"type": "array", "items": {"$ref": "#/components/schemas/Organization"}}}
       }
     },
     "responses": {
@@ -457,47 +461,35 @@
         "description": "The authentication request body is missing, malformed, or invalid.",
         "content": {
           "application/json": {
-            "schema": { "$ref": "#/components/schemas/Error" },
-            "example": {
-              "code": "BAD_REQUEST",
-              "message": "email is invalid"
-            }
+            "schema": {"$ref": "#/components/schemas/Error"},
+            "example": {"code": "BAD_REQUEST", "message": "email is invalid"}
           }
         }
       },
       "Unauthorized": {
-        "description": "The credentials are invalid or the refresh token is missing, invalid, or expired.",
+        "description": "The bearer token is missing, invalid, or expired, or the refresh token is missing, invalid, or expired.",
         "content": {
           "application/json": {
-            "schema": { "$ref": "#/components/schemas/Error" },
-            "example": {
-              "code": "UNAUTHORIZED",
-              "message": "invalid email and/or password"
-            }
+            "schema": {"$ref": "#/components/schemas/Error"},
+            "example": {"code": "UNAUTHORIZED", "message": "invalid email and/or password"}
           }
         }
       },
       "BadRequest": {
-        "description": "Invalid request body, query parameters, or product ID.",
+        "description": "The request body, query parameters, or resource ID is invalid.",
         "content": {
           "application/json": {
-            "schema": { "$ref": "#/components/schemas/Error" },
-            "example": {
-              "code": "BAD_REQUEST",
-              "message": "status must be one of [active inactive]"
-            }
+            "schema": {"$ref": "#/components/schemas/Error"},
+            "example": {"code": "BAD_REQUEST", "message": "status must be one of [active inactive]"}
           }
         }
       },
       "ProductNotFound": {
-        "description": "The product does not exist or has been deleted.",
+        "description": "The product does not exist in this organization or has been deleted.",
         "content": {
           "application/json": {
-            "schema": { "$ref": "#/components/schemas/Error" },
-            "example": {
-              "code": "NOT_FOUND",
-              "message": "product not found"
-            }
+            "schema": {"$ref": "#/components/schemas/Error"},
+            "example": {"code": "NOT_FOUND", "message": "product not found"}
           }
         }
       },
@@ -505,11 +497,17 @@
         "description": "An internal error occurred while processing the request.",
         "content": {
           "application/json": {
-            "schema": { "$ref": "#/components/schemas/Error" },
-            "example": {
-              "code": "INTERNAL_SERVER_ERROR",
-              "message": "failed to get product"
-            }
+            "schema": {"$ref": "#/components/schemas/Error"},
+            "example": {"code": "INTERNAL_SERVER_ERROR", "message": "failed to get product"}
+          }
+        }
+      },
+      "OrganizationNotFound": {
+        "description": "The organization does not exist or the caller is not a member.",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "#/components/schemas/Error"},
+            "example": {"code": "NOT_FOUND", "message": "organization not found"}
           }
         }
       }
@@ -520,7 +518,8 @@
         "in": "cookie",
         "name": "refresh_token",
         "description": "HttpOnly refresh token cookie scoped to /v1/auth."
-      }
+      },
+      "BearerAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}
     }
   }
 }
