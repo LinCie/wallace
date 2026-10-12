@@ -19,10 +19,12 @@ import (
 func NewRouter(db *sqlx.DB, cfg config.Config) http.Handler {
 	r := chi.NewRouter()
 
-	r.Use(chimiddleware.StripSlashes)
-	r.Use(chimiddleware.Logger)
-	r.Use(chimiddleware.Recoverer)
-	r.Use(middleware.WithCORS(cfg))
+	r.Use(
+		chimiddleware.StripSlashes,
+		chimiddleware.Logger,
+		chimiddleware.Recoverer,
+		middleware.WithCORS(cfg),
+	)
 
 	r.Get("/docs", docs.Scalar)
 	r.Get("/openapi.json", docs.OpenAPI)
